@@ -6,8 +6,9 @@ import {
   APP_URL, autoApplyEnabled, beginConnect, browserDeps, completeConnect, connectAvailable, disconnect, isAuthCallback,
   isConnected, LifeHubError, needsReconnect, rejectLocally, rememberReceipt, setAutoApply, sync,
 } from '../../integration/lifehub'
+import { boardUploadEnabled, setBoardUploadEnabled } from '../../integration/boardUpload'
 import { APPLIED_EVENT, applyProposals, chooseMission, dayRefs, readDay } from '../../integration/lifehubApply'
-import { formatSyncTime, getLifeHubState, openSettings, requestLifeHubSync, setLifeHubState, SYNC_EVENT, useLifeHub, type Waiting } from '../../integration/lifehubStore'
+import { formatSyncTime, getLifeHubState, openSettings, requestBoardUpload, requestLifeHubSync, setLifeHubState, SYNC_EVENT, useLifeHub, type Waiting } from '../../integration/lifehubStore'
 
 // The one-time code exchange must not run twice (React StrictMode runs effects twice in development).
 let callbackOnce: Promise<void> | null = null
@@ -47,7 +48,7 @@ export function LifeHubAgent() {
         callbackOnce ??= completeConnect(location.search, browserDeps())
         try {
           await callbackOnce
-          setLifeHubState({ connected: true, reconnect: false, error: '' })
+          setLifeHubState({ connected: true, reconnect: false, boardReconnect: false, error: '' })
           setNotice('Life Hub에 연결했어요.')
         } catch (e) {
           setLifeHubState({ error: e instanceof Error ? e.message : String(e) })
@@ -148,6 +149,7 @@ function StatusLine({ tone, children }: { tone: 'ok' | 'warn'; children: React.R
 export function LifeHubSettings() {
   const hub = useLifeHub()
   const [auto, setAuto] = useState(() => autoApplyEnabled(browserDeps()))
+  const [board, setBoard] = useState(() => boardUploadEnabled(browserDeps()))
   const canConnect = typeof location !== 'undefined' && connectAvailable(location)
 
   async function connect() {
@@ -160,7 +162,7 @@ export function LifeHubSettings() {
   function confirmDisconnect() {
     if (!confirm('이 기기에서 Life Hub 연결을 해제할까요? 일기는 그대로 남아요.')) return
     disconnect(browserDeps())
-    setLifeHubState({ connected: false, reconnect: false, waiting: [], error: '' })
+    setLifeHubState({ connected: false, reconnect: false, boardReconnect: false, waiting: [], error: '' })
   }
   const disconnectButton = (
     <button type="button" className="btn-secondary flex-1 py-2" onClick={confirmDisconnect}>
@@ -236,6 +238,33 @@ export function LifeHubSettings() {
           <small className="block text-xs text-muted">Claude 카드에서 「일기 쓰기」를 누른 미션을 앱을 열 때 오늘의 미션으로 정해요.</small>
         </span>
       </label>
+      <label className="flex items-start gap-2 text-sm text-ink">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={board}
+          onChange={(e) => {
+            setBoardUploadEnabled(browserDeps(), e.target.checked)
+            setBoard(e.target.checked)
+            if (e.target.checked) requestBoardUpload()
+          }}
+        />
+        <span>
+          이 기기에서 보드에 올리기
+          <small className="block text-xs text-muted">
+            Life Board에 보일 오늘의 미션·연속 기록·최근 일기 목록을 올려요(일기 내용은 올리지 않아요). 기록은 기기 안에만 있고 Life Hub는 최신 목록 하나만 보관해서, 여러 기기에서 켜면 마지막에 올린 기기의 것으로 바뀌어요.
+          </small>
+        </span>
+      </label>
+      {board && hub.boardReconnect && (
+        <div role="status" className="rounded-lg bg-danger-soft px-3 py-3 text-sm text-danger">
+          <p>보드에 올리려면 Life Hub에 다시 연결해 주세요. 지금 연결에는 보드 권한이 없어요. 수신함과 동기화는 그대로 쓸 수 있어요.</p>
+          <button type="button" className="btn-primary mt-3 py-2" disabled={!canConnect} onClick={() => void connect()}>
+            <Link2 className="h-4 w-4" /> 다시 연결
+          </button>
+          {!canConnect && <p className="mt-2 text-xs">배포된 주소에서만 연결할 수 있어요.</p>}
+        </div>
+      )}
       {hub.conflicts > 0 && (
         <p role="status" className="text-sm text-muted">{`${hub.conflicts}개 제안은 Life Hub와 상태가 달라요. 일기 룰렛의 기록은 그대로예요.`}</p>
       )}

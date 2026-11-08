@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "app": "diaryroulette",
+  "generated_at": "2026-11-08T03:00:00Z",
+  "tiles": [
+    {
+      "id": "today",
+      "name": "일기 룰렛 · 오늘의 미션",
+      "tone": "type",
+      "form": "line",
+      "sizes": [
+        "2x1",
+        "4x1"
+      ],
+      "size": "2x1",
+      "default": true,
+      "href": "https://kingjnu-sakayume.github.io/diaryroulette/",
+      "data": {
+        "label": "11/8 미션",
+        "title": "한 모음으로만 쓰기",
+        "pill": "아직 안 씀",
+        "sub": "언어"
+      }
+    },
+    {
+      "id": "streak",
+      "name": "일기 룰렛 · 연속 기록",
+      "tone": "type",
+      "form": "num",
+      "sizes": [
+        "1x1",
+        "2x1"
+      ],
+      "size": "1x1",
+      "default": false,
+      "href": "https://kingjnu-sakayume.github.io/diaryroulette/",
+      "data": {
+        "label": "연속 기록",
+        "value": "3",
+        "unit": "일",
+        "caption": "11/7까지"
+      }
+    },
+    {
+      "id": "recent",
+      "name": "일기 룰렛 · 최근 일기",
+      "tone": "type",
+      "form": "list",
+      "sizes": [
+        "2x1",
+        "2x2",
+        "4x2"
+      ],
+      "size": "2x2",
+      "default": false,
+      "href": "https://kingjnu-sakayume.github.io/diaryroulette/",
+      "detail": {
+        "title": "최근에 쓴 일기",
+        "rows": [
+          {
+            "title": "물건의 눈으로",
+            "value": "11/7",
+            "sub": "시점"
+          },
+          {
+            "title": "모음 하나 압수",
+            "value": "11/6",
+            "sub": "언어"
+          },
+          {
+            "title": "이다·있다·없다 없이 쓰기",
+            "value": "11/5",
+            "sub": "언어"
+          },
+          {
+            "title": "명사 없이 쓰기",
+            "value": "11/3",
+            "sub": "언어"
+          }
+        ]
+      },
+      "data": {
+        "label": "최근에 쓴 일기",
+        "rows": [
+          {
+            "title": "물건의 눈으로",
+            "value": "11/7",
+            "sub": "시점"
+          },
+          {
+            "title": "모음 하나 압수",
+            "value": "11/6",
+            "sub": "언어"
+          },
+          {
+            "title": "이다·있다·없다 없이 쓰기",
+            "value": "11/5",
+            "sub": "언어"
+          },
+          {
+            "title": "명사 없이 쓰기",
+            "value": "11/3",
+            "sub": "언어"
+          }
+        ]
+      }
+    }
+  ]
+}

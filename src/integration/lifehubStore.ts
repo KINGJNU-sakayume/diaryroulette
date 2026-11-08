@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { Proposal } from './lifehub'
-import { browserDeps, isConnected, needsReconnect } from './lifehub'
+import { boardNeedsReconnect, browserDeps, isConnected, needsReconnect } from './lifehub'
 import type { Decision } from './lifehubApply'
 
 export interface Waiting {
@@ -12,6 +12,8 @@ export interface LifeHubState {
   connected: boolean
   /** Life Hub refused this device's sign-in; the owner has to connect again (settings 「확인 필요」). */
   reconnect: boolean
+  /** Connected, but the sign-in lacks the board scope: connect again to upload the Life Board tiles. */
+  boardReconnect: boolean
   syncing: boolean
   waiting: Waiting[]
   conflicts: number
@@ -22,6 +24,7 @@ export interface LifeHubState {
 let state: LifeHubState = {
   connected: typeof localStorage !== 'undefined' && isConnected(browserDeps()),
   reconnect: typeof localStorage !== 'undefined' && needsReconnect(browserDeps()),
+  boardReconnect: typeof localStorage !== 'undefined' && boardNeedsReconnect(browserDeps()),
   syncing: false,
   waiting: [],
   conflicts: 0,
@@ -49,6 +52,12 @@ export const SYNC_EVENT = 'lifehub-sync'
 /** Ask the agent to send decisions, share today's state and refresh proposals. */
 export function requestLifeHubSync(quiet = true) {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { quiet } }))
+}
+
+export const BOARD_EVALUATE_EVENT = 'board-evaluate'
+/** Ask the board upload to look at the tiles now (the device switch was just turned on). */
+export function requestBoardUpload() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BOARD_EVALUATE_EVENT))
 }
 
 export const SETTINGS_EVENT = 'open-settings'
