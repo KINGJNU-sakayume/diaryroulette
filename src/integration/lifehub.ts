@@ -18,7 +18,8 @@ export const LIFEHUB_ORIGIN = 'https://life-hub-api.213303.workers.dev'
 export const APP_URL = 'https://kingjnu-sakayume.github.io/diaryroulette/'
 export const CLIENT_ID = APP_URL + 'lifehub-client.json'
 export const RESOURCE = LIFEHUB_ORIGIN + '/diaryroulette'
-export const SCOPE = 'diaryroulette:inbox'
+/** `diaryroulette:board` lets the app upload its Life Board tiles. Connections made before it was added lack it. */
+export const SCOPE = 'diaryroulette:inbox diaryroulette:board'
 const API = LIFEHUB_ORIGIN + '/diaryroulette/v1'
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -89,6 +90,7 @@ export function parseProposal(item: unknown): Proposal | null {
 const TOKENS_KEY = 'diaryroulette.lifehub.tokens.v1';
 const RECONNECT_KEY = 'diaryroulette.lifehub.reconnect.v1';
 const PENDING_AUTH_KEY = 'diaryroulette.lifehub.pending-auth.v1';
+const BOARD_RECONNECT_KEY = 'diaryroulette.board.reconnect.v1';
 const AUTH_MAX_AGE_MS = 10 * 60 * 1000;
 interface Tokens {
   access_token: string;
@@ -102,7 +104,7 @@ interface PendingAuth {
 }
 export type Outcome = 'confirmed' | 'rejected' | 'conflict' | 'missing';
 
-function readJson<T>(store: KV, key: string): T | null {
+export function readJson<T>(store: KV, key: string): T | null {
   try {
     const raw = store.getItem(key);
     return raw ? (JSON.parse(raw) as T) : null;
@@ -127,9 +129,17 @@ export function isConnected(deps: Pick<Deps, 'storage'>): boolean {
 export function needsReconnect(deps: Pick<Deps, 'storage'>): boolean {
   return deps.storage.getItem(RECONNECT_KEY) === '1';
 }
-function dropRejectedTokens(deps: Pick<Deps, 'storage'>): void {
+export function dropRejectedTokens(deps: Pick<Deps, 'storage'>): void {
   deps.storage.removeItem(TOKENS_KEY);
   deps.storage.setItem(RECONNECT_KEY, '1');
+}
+/** The stored sign-in lacks the board scope: the tile upload waits until the owner connects again (tokens are kept). */
+export function boardNeedsReconnect(deps: Pick<Deps, 'storage'>): boolean {
+  return deps.storage.getItem(BOARD_RECONNECT_KEY) === '1';
+}
+export function setBoardNeedsReconnect(deps: Pick<Deps, 'storage'>, on: boolean): void {
+  if (on) deps.storage.setItem(BOARD_RECONNECT_KEY, '1');
+  else deps.storage.removeItem(BOARD_RECONNECT_KEY);
 }
 export function isAuthCallback(search: string): boolean {
   const q = new URLSearchParams(search);
@@ -193,9 +203,11 @@ export async function completeConnect(search: string, deps: Deps): Promise<void>
   await tokenRequest(deps, {
     grant_type: 'authorization_code', code, redirect_uri: APP_URL, code_verifier: pending.verifier, resource: RESOURCE,
   });
+  // A fresh sign-in asks for the board scope, so a past "needs the scope" verdict no longer holds.
+  setBoardNeedsReconnect(deps, false);
 }
 
-async function accessToken(deps: Deps, force = false): Promise<string> {
+export async function accessToken(deps: Deps, force = false): Promise<string> {
   const tokens = readJson<Tokens>(deps.storage, TOKENS_KEY);
   if (!tokens?.refresh_token) throw new LifeHubError('not_connected', 'Life Hub에 연결되어 있지 않아요.');
   if (!force && tokens.access_expires_at - 60_000 > deps.now()) return tokens.access_token;
@@ -225,6 +237,7 @@ async function api(deps: Deps, method: 'GET' | 'POST' | 'PUT', path: string, bod
 
 export function disconnect(deps: Deps): void {
   const tokens = readJson<Tokens>(deps.storage, TOKENS_KEY);
+  setBoardNeedsReconnect(deps, false);
   deps.storage.removeItem(TOKENS_KEY);
   deps.storage.removeItem(RECONNECT_KEY);
   if (tokens?.refresh_token)

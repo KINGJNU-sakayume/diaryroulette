@@ -1,3 +1,5 @@
+import type { BoardState } from '../lib/boardTiles'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface TodayMissionRecord {
@@ -26,6 +28,12 @@ export interface JournalEntry {
   createdAt: string // ISO
   completedAt: string | null
   extraData?: Record<string, unknown>
+}
+
+/** Fired after the diary records change, so the Life Board upload can look at what changed. */
+export const BOARD_DATA_EVENT = 'board-data-changed'
+function notifyBoardData(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(BOARD_DATA_EVENT))
 }
 
 // ─── DB singleton ─────────────────────────────────────────────────────────────
@@ -86,6 +94,7 @@ export async function getTodayMission(): Promise<TodayMissionRecord | undefined>
 
 export async function setTodayMission(record: TodayMissionRecord): Promise<void> {
   await tx<IDBValidKey>('missions', 'readwrite', (s) => s.put(record))
+  notifyBoardData()
 }
 
 export async function getCooldownList(): Promise<CooldownEntry[]> {
@@ -108,6 +117,7 @@ export async function getJournal(id: string): Promise<JournalEntry | undefined> 
 
 export async function saveJournal(entry: JournalEntry): Promise<void> {
   await tx<IDBValidKey>('journals', 'readwrite', (s) => s.put(entry))
+  notifyBoardData()
 }
 
 export async function getAllJournals(): Promise<JournalEntry[]> {
@@ -131,6 +141,7 @@ export async function getJournalsByStatus(
 
 export async function deleteJournal(id: string): Promise<void> {
   await tx<undefined>('journals', 'readwrite', (s) => s.delete(id))
+  notifyBoardData()
 }
 
 export async function clearAllData(): Promise<void> {
@@ -142,6 +153,7 @@ export async function clearAllData(): Promise<void> {
     transaction.oncomplete = () => resolve()
     transaction.onerror = () => reject(transaction.error)
   })
+  notifyBoardData()
 }
 
 // ─── Atomic import ────────────────────────────────────────────────────────────
@@ -186,4 +198,16 @@ export async function atomicImport(payload: {
     transaction.onabort = () =>
       reject(transaction.error ?? new Error('Transaction aborted'))
   })
+  notifyBoardData()
+}
+
+// ─── Life Board ───────────────────────────────────────────────────────────────
+
+/** What the board tiles are built from: ids, missions and statuses only, no diary content. */
+export async function readBoardState(): Promise<BoardState> {
+  const [todayMission, journals] = await Promise.all([getTodayMission(), getAllJournals()])
+  return {
+    todayMission: todayMission ? { date: todayMission.date, missionId: todayMission.missionId } : null,
+    journals: journals.map((j) => ({ id: j.id, missionId: j.missionId, status: j.status })),
+  }
 }
