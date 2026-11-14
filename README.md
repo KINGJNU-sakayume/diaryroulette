@@ -84,6 +84,7 @@ npm run dev      # 개발 서버 (오른쪽 아래 DEV 버튼으로 점검 패�
 npm test         # 단위 테스트 (vitest)
 npm run lint
 npm run build    # 타입 검사 + 프로덕션 빌드
+npm run preview  # 빌드 결과(dist/)를 로컬에서 확인
 npm run icons    # public/favicon.svg로 PWA 아이콘 재생성
 ```
 
